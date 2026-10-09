@@ -46,3 +46,26 @@ export function num(v) {
   const m = /-?\d[\d,]*(?:\.\d+)?/.exec(String(v ?? ""));
   return m ? Number(m[0].replace(/,/g, "")) : null;
 }
+
+/** The exact A1 range for a window of a tab, quoted when the name needs it: `'Oct'!A1:BH150`. */
+export function gridRange(tab, rows, cols) {
+  const name = /^[A-Za-z0-9_]+$/.test(tab) ? tab : `'${String(tab).replace(/'/g, "''")}'`;
+  return `${name}!A1:${colLetter(Math.max(1, cols))}${Math.max(1, rows)}`;
+}
+
+/** One typed or pasted row → its cell values. A row copied from a sheet arrives tab-separated; otherwise commas, with "double
+    quotes" keeping a comma inside a value. Empty input → []. */
+export function parseRowText(text) {
+  const t = String(text ?? "").replace(/\r?\n.*$/s, "");          // one row only: the first line
+  if (!t.trim()) return [];
+  if (t.includes("\t")) return t.split("\t").map((v) => v.trim());
+  const out = []; let cur = "", q = false;
+  for (let i = 0; i < t.length; i++) {
+    const ch = t[i];
+    if (ch === '"') { if (q && t[i + 1] === '"') { cur += '"'; i++; } else q = !q; }
+    else if (ch === "," && !q) { out.push(cur.trim()); cur = ""; }
+    else cur += ch;
+  }
+  out.push(cur.trim());
+  return out;
+}

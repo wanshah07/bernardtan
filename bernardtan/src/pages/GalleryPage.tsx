@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ImagePlus, RefreshCw } from "lucide-react";
 import { type Token } from "../lib/google";
-import { type Pic, addPhonePictures, drivePictures, phonePictures, removePhonePicture } from "../lib/gallery";
+import { type Pic, addPhonePictures, drivePictures, phonePictures, removePhonePicture, revokePics } from "../lib/gallery";
 import Carousel from "../components/Carousel";
 import Connect from "../components/Connect";
 import Koko from "../components/Koko";
@@ -14,18 +14,21 @@ export default function GalleryPage({ token, setToken }: { token: Token | null; 
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
+  const driveRef = useRef<Pic[]>([]), phoneRef = useRef<Pic[]>([]);
   const loadDrive = async () => {
     if (!token) return;
     setBusy(true); setErr("");
-    try { setDrive(await drivePictures(token)); } catch (e: any) { setErr(e.message || String(e)); } finally { setBusy(false); }
+    try { const next = await drivePictures(token); revokePics(driveRef.current); driveRef.current = next; setDrive(next); } catch (e: any) { setErr(e.message || String(e)); } finally { setBusy(false); }
   };
-  const loadPhone = () => phonePictures().then(setPhone);
-  useEffect(() => { loadPhone(); }, []);
+  const loadPhone = async () => { const next = await phonePictures(); revokePics(phoneRef.current); phoneRef.current = next; setPhone(next); };
+  useEffect(() => { loadPhone(); return () => { revokePics(phoneRef.current); revokePics(driveRef.current); }; }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (token) loadDrive(); }, [token]);   // eslint-disable-line react-hooks/exhaustive-deps
   const pick = async (files: FileList | null) => {
     if (!files?.length) return;
-    const n = await addPhonePictures(files);
-    setMsg(n ? `${n} picture${n > 1 ? "s" : ""} added. They stay on this phone.` : "That was not a picture.");
+    try {
+      const n = await addPhonePictures(files);
+      setMsg(n ? `${n} picture${n > 1 ? "s" : ""} added. They stay on this phone.` : "That was not a picture.");
+    } catch { setMsg("This browser would not keep the pictures (a private window blocks it). Open the app normally and try again."); }
     loadPhone();
   };
   return (

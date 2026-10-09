@@ -48,24 +48,41 @@ export function upcoming(list, now = new Date()) {
   return list.map((r) => ({ r, at: nextAt(r, now) })).filter((x) => x.at).sort((a, b) => a.at - b.at);
 }
 
-/** Those due in the last `windowMs` and not yet marked, for the in-app nudge. */
+/** The occurrences that fell due in the last `windowMs` (or are overdue and not done): [{ r, at }]. Each is one moment, so a
+    page can alert and dismiss per occurrence: dismissing today's 17:00 does not silence tomorrow's. */
 export function dueNow(list, now = new Date(), windowMs = 60_000) {
-  return list.filter((r) => { const d = nextAt(r, new Date(now.getTime() - windowMs)); return d && d <= now && !r.done; });
+  const out = [];
+  for (const r of list) {
+    if (r.done) continue;
+    const at = nextAt(r, new Date(now.getTime() - windowMs));
+    if (at && at <= now) out.push({ r, at });
+  }
+  return out;
 }
+export const occurrenceKey = (x) => `${x.r.id}|${x.at.getTime()}`;
 
 const pad = (n) => String(n).padStart(2, "0");
-/** A local wall-clock stamp for an .ics DTSTART with TZID. */
-export function icsLocal(d) {
-  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
-}
 export function icsUtc(d) {
   return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`;
+}
+/** RFC 5545 folds a content line at 75 octets: the rest continues on lines that start with one space. */
+export function fold(line) {
+  const enc = new TextEncoder();
+  if (enc.encode(line).length <= 75) return line;
+  const parts = []; let cur = "", bytes = 0, limit = 75;
+  for (const ch of Array.from(line)) {
+    const n = enc.encode(ch).length;
+    if (bytes + n > limit) { parts.push(cur); cur = ""; bytes = 0; limit = 74; }
+    cur += ch; bytes += n;
+  }
+  parts.push(cur);
+  return parts.join("\r\n ");
 }
 const esc = (s) => String(s || "").replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/[,;]/g, (m) => `\\${m}`);
 const RRULE = { daily: "FREQ=DAILY", weekly: "FREQ=WEEKLY", monthly: "FREQ=MONTHLY" };
 
 /** One VEVENT with an alert at the time (and one `lead` minutes before, when set). Opened on an iPhone it offers "Add to Calendar". */
-export function buildIcs(r, { tz = "Asia/Kuala_Lumpur", now = new Date() } = {}) {
+export function buildIcs(r, { now = new Date() } = {}) {
   const start = new Date(r.at);
   const end = new Date(start.getTime() + 15 * 60_000);
   const lines = [
@@ -73,8 +90,8 @@ export function buildIcs(r, { tz = "Asia/Kuala_Lumpur", now = new Date() } = {})
     "BEGIN:VEVENT",
     `UID:${r.id}@bernardtan.kkmhalalconsultant.com`,
     `DTSTAMP:${icsUtc(now)}`,
-    `DTSTART;TZID=${tz}:${icsLocal(start)}`,
-    `DTEND;TZID=${tz}:${icsLocal(end)}`,
+    `DTSTART:${icsUtc(start)}`,
+    `DTEND:${icsUtc(end)}`,
     `SUMMARY:${esc(r.title)}`,
   ];
   if (r.note) lines.push(`DESCRIPTION:${esc(r.note)}`);
@@ -82,13 +99,13 @@ export function buildIcs(r, { tz = "Asia/Kuala_Lumpur", now = new Date() } = {})
   lines.push("BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${esc(r.title)}`, "TRIGGER:-PT0M", "END:VALARM");
   if (r.lead > 0) lines.push("BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${esc(r.title)} (soon)`, `TRIGGER:-PT${r.lead}M`, "END:VALARM");
   lines.push("END:VEVENT", "END:VCALENDAR");
-  return lines.join("\r\n") + "\r\n";
+  return lines.map(fold).join("\r\n") + "\r\n";
 }
 
 /** The whole list as one calendar file, so Bernard can add everything in one go. */
 export function buildIcsAll(list, opts) {
   const parts = list.map((r) => buildIcs(r, opts).split("\r\n").filter((l) => l && !/^(BEGIN:VCALENDAR|END:VCALENDAR|VERSION|PRODID|CALSCALE|METHOD)/.test(l)));
-  return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Bernard Tan//Reminders//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", ...parts.flat(), "END:VCALENDAR"].join("\r\n") + "\r\n";
+  return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Bernard Tan//Reminders//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", ...parts.flat(), "END:VCALENDAR"].map(fold).join("\r\n") + "\r\n";
 }
 
 /** The value for a <input type="datetime-local"> from a Date, and back. */

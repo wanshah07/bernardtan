@@ -119,3 +119,35 @@ body { min-height: 100dvh; padding-bottom: env(safe-area-inset-bottom); }
 .key { min-height: 64px; font-size: 1.5rem; }
 
 @media (prefers-reduced-motion: reduce) { .wobble:hover, .koko, .koko .eye, .koko.wave .arm-r, .glow-pulse { animation: none; } }
+
+/* The sheet, drawn like the Google Sheets app: light by day, dark by night, the app's own colours for chrome. Cell colours come
+   from the spreadsheet itself and are set inline by SheetGrid. */
+.gs { --gs-bg:#fff; --gs-head:#f8f9fa; --gs-headfg:#5f6368; --gs-grid:#e1e3e6; --gs-freeze:#80868b; --gs-text:#202124;
+  --gs-bar:#f1f3f4; --gs-barfg:#5f6368; --gs-active:#188038; --gs-activebg:#e6f4ea; --gs-sel:#1a73e8; }
+.gs[data-dark="1"] { --gs-bg:#202124; --gs-head:#2d2e30; --gs-headfg:#bdc1c6; --gs-grid:#3c4043; --gs-freeze:#9aa0a6; --gs-text:#e8eaed;
+  --gs-bar:#1b1b1d; --gs-barfg:#bdc1c6; --gs-active:#81c995; --gs-activebg:#2a2d2e; --gs-sel:#8ab4f8; }
+.gs-scroll { overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; background: var(--gs-bg); }
+.gs-table { border-collapse: separate; border-spacing: 0; table-layout: fixed; font-family: Arial, Roboto, "Helvetica Neue", sans-serif; color: var(--gs-text); }
+.gs-table th { position: sticky; background: var(--gs-head); color: var(--gs-headfg); font-weight: 400; font-size: 11px; text-align: center; padding: 0;
+  box-shadow: inset -1px -1px 0 var(--gs-grid); user-select: none; overflow: hidden; }
+.gs-table td { position: relative; padding: 0 3px; overflow: hidden; line-height: 1.2; cursor: cell; box-sizing: border-box; }
+.gs-table td.gs-sel { outline: 2px solid var(--gs-sel); outline-offset: -2px; }
+.gs-note { position: absolute; top: 0; right: 0; width: 8px; height: 8px; background: linear-gradient(225deg, currentColor 50%, transparent 50%); opacity: .75; pointer-events: none; }
+.gs-fbar { display: flex; align-items: center; gap: .5rem; min-height: 34px; padding: .25rem .6rem; background: var(--gs-bar); color: var(--gs-barfg); font-size: 13px; border-bottom: 1px solid var(--gs-grid); }
+.gs-addr { min-width: 3.2rem; font-weight: 700; color: var(--gs-text); }
+.gs-fx { font-style: italic; opacity: .7; }
+.gs-val { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--gs-text); }
+.gs-tabs { display: flex; align-items: stretch; background: var(--gs-bar); border-top: 1px solid var(--gs-grid); position: relative; }
+.gs-tabs .gs-scrollx { display: flex; overflow-x: auto; scrollbar-width: none; flex: 1; }
+.gs-tabs .gs-scrollx::-webkit-scrollbar { display: none; }
+.gs-tab { flex: 0 0 auto; padding: 0 1rem; min-height: 48px; font-size: 15px; font-weight: 600; color: var(--gs-barfg); background: transparent; border: 0; border-bottom: 3px solid transparent; white-space: nowrap; }
+.gs-tab[aria-selected="true"] { color: var(--gs-active); background: var(--gs-activebg); border-bottom-color: var(--gs-active); }
+.gs-menu { position: absolute; left: .4rem; bottom: 52px; z-index: 20; min-width: 12rem; max-height: 50vh; overflow: auto; background: var(--gs-bar); color: var(--gs-text); border: 1px solid var(--gs-grid); border-radius: .75rem; box-shadow: 0 8px 24px rgba(0,0,0,.35); padding: .25rem; }
+.gs-menu button { display: flex; width: 100%; align-items: center; gap: .5rem; padding: .6rem .75rem; text-align: left; border-radius: .5rem; font-size: 14px; min-height: 44px; }
+.gs-menu button[aria-selected="true"] { background: var(--gs-activebg); color: var(--gs-active); font-weight: 700; }
+
+/* every cell's content sits in a box of exactly the row's height, so a row can never grow past what the sheet says (a taller
+   row would push the pinned rows out of line with the offsets SheetGrid computed) */
+.gs-in { display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; }
+.gs-txt { overflow: hidden; padding: 0 3px; }
+.gs-table td { padding: 0; }

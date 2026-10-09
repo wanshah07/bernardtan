@@ -2,6 +2,9 @@
    access token in the browser (no server, no secret), and the page calls Drive and Sheets with it. The OAuth client id
    is public by design; it is read from the Settings page (localStorage) or VITE_GOOGLE_CLIENT_ID at build time. */
 import { tabRange, toObjects } from "./sheet.js";
+import { WINDOW_COLS, WINDOW_ROWS, GRID_FIELDS, buildGrid, colourOf, cssRgb } from "./grid.js";
+import { explain } from "./mygoogle.js";
+import { gridRange } from "./sheet.js";
 
 export const SCOPES = ["https://www.googleapis.com/auth/drive.readonly", "https://www.googleapis.com/auth/spreadsheets"].join(" ");
 const KEY_CLIENT = "bernard.google.client_id";
@@ -23,7 +26,11 @@ export function savedToken(): Token | null {
     return t && t.expires_at > Date.now() + 30_000 ? t : null;
   } catch { return null; }
 }
-export function forget() { try { sessionStorage.removeItem(KEY_TOKEN); } catch { /* ignore */ } }
+/** Drop the saved key and tell the app, so every page goes back to "Find my Google" instead of showing a dead connection. */
+export function forget() {
+  try { sessionStorage.removeItem(KEY_TOKEN); } catch { /* ignore */ }
+  try { window.dispatchEvent(new Event("bernard:signedout")); } catch { /* ignore */ }
+}
 
 let gisReady: Promise<void> | null = null;
 export function loadGis(): Promise<void> {
@@ -81,11 +88,11 @@ export function signOut(token: Token | null) {
 
 async function api<T>(token: Token, url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, { ...init, headers: { Authorization: `Bearer ${token.access_token}`, "Content-Type": "application/json", ...(init?.headers || {}) } });
-  if (r.status === 401) { forget(); throw new Error("Google signed you out (the hour is up). Press Connect again."); }
+  if (r.status === 401) { forget(); throw Object.assign(new Error(explain(401, "")), { status: 401 }); }
   if (!r.ok) {
-    let msg = `${r.status}`;
-    try { const j = await r.json(); msg = j?.error?.message || msg; } catch { /* keep the status */ }
-    throw new Error(msg);
+    let body = "";
+    try { body = await r.text(); } catch { /* keep empty */ }
+    throw Object.assign(new Error(explain(r.status, body, url.includes("sheets.googleapis.com") ? "Google Sheets API" : "Google Drive API")), { status: r.status });
   }
   return r.json() as Promise<T>;
 }
@@ -99,10 +106,26 @@ export async function listFiles(token: Token, q = "", pageSize = 40, scope: "min
   return j.files || [];
 }
 
-/** The tabs of a spreadsheet. */
-export async function sheetTabs(token: Token, spreadsheetId: string): Promise<{ title: string; tabs: string[] }> {
-  const j = await api<any>(token, `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=properties.title,sheets.properties.title`);
-  return { title: j?.properties?.title || "", tabs: (j?.sheets || []).map((s: any) => s.properties?.title).filter(Boolean) };
+export type SheetTab = { sheetId: number; title: string; index: number; hidden: boolean; color: string; rows: number; cols: number; isGrid: boolean };
+
+/** The tabs of a spreadsheet, in their own order, with colour, hidden flag and size. */
+export async function sheetMeta(token: Token, spreadsheetId: string): Promise<{ title: string; tabs: SheetTab[] }> {
+  const fields = "properties.title,sheets.properties(sheetId,title,index,sheetType,hidden,tabColor,tabColorStyle,gridProperties(rowCount,columnCount))";
+  const j = await api<any>(token, `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?${new URLSearchParams({ fields })}`);
+  const tabs: SheetTab[] = (j?.sheets || []).map((s: any) => {
+    const p = s.properties || {};
+    return { sheetId: p.sheetId, title: p.title || "", index: p.index ?? 0, hidden: !!p.hidden, color: cssRgb(colourOf(p.tabColorStyle, p.tabColor)),
+      rows: p.gridProperties?.rowCount || 0, cols: p.gridProperties?.columnCount || 0, isGrid: (p.sheetType || "GRID") === "GRID" };
+  }).filter((t: SheetTab) => t.title).sort((a: SheetTab, b: SheetTab) => a.index - b.index);
+  return { title: j?.properties?.title || "", tabs };
+}
+
+/** One tab drawn from its real cells: values, colours, merges, frozen panes, sizes. The window is clamped to the tab. */
+export async function readGrid(token: Token, spreadsheetId: string, tab: SheetTab, rows = WINDOW_ROWS) {
+  const askRows = Math.max(1, Math.min(rows, tab.rows || rows)), askCols = Math.max(1, Math.min(WINDOW_COLS, tab.cols || WINDOW_COLS));
+  const params = new URLSearchParams({ ranges: gridRange(tab.title, askRows, askCols), includeGridData: "true", fields: GRID_FIELDS });
+  const j = await api<any>(token, `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?${params}`);
+  return buildGrid(j?.sheets?.[0], j?.properties?.spreadsheetTheme?.themeColors || [], { rows: askRows, cols: askCols, total: tab.rows || askRows });
 }
 
 /** A tab as objects keyed by its header row. */

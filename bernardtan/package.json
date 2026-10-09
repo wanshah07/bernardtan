@@ -1,13 +1,13 @@
 {
   "name": "bernardtan",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "node sheet.test.mjs && node reminders.test.mjs && node mygoogle.test.mjs"
+    "test": "node sheet.test.mjs && node grid.test.mjs && node reminders.test.mjs && node mygoogle.test.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.47.0",

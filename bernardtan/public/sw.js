@@ -1,7 +1,7 @@
 /* Bernard Tan · service worker. The app shell (the page, its scripts, styles, icons) is cached on install so the app
    opens offline and installs as an app on phone, tablet and desktop. Google's APIs are never cached: they are live
    data and carry the sign-in token. A new deploy changes CACHE, and the old cache is dropped on activate. */
-const CACHE = "bernard-v3";
+const CACHE = "bernard-v4";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./koko.svg", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", (e) => {

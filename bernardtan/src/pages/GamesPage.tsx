@@ -28,18 +28,20 @@ function BurgerTap() {
 
   useEffect(() => {
     if (state !== "play") return;
-    const c = ref.current!; const ctx = c.getContext("2d")!;
+    const c = ref.current; const ctx = c?.getContext("2d");
+    if (!c || !ctx) return;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const W = c.clientWidth, H = c.clientHeight;
+    const W = c.clientWidth || 300, H = c.clientHeight || 280;
     c.width = W * dpr; c.height = H * dpr; ctx.scale(dpr, dpr);
     const g = game.current; g.items = []; g.score = 0; g.t0 = performance.now(); g.last = g.t0;
     const ink = getComputedStyle(document.documentElement).getPropertyValue("--c-line").trim();
     const col = (v: string) => `rgb(${v})`;
+    let shown = 31;
     const draw = (now: number) => {
       const dt = Math.min(0.05, (now - g.last) / 1000); g.last = now;
       const elapsed = (now - g.t0) / 1000;
       const remaining = Math.max(0, 30 - elapsed);
-      setLeft(Math.ceil(remaining));
+      const sec = Math.ceil(remaining); if (sec !== shown) { shown = sec; setLeft(sec); }     // not every frame
       if (Math.random() < 0.02 + elapsed * 0.002) g.items.push({ x: 30 + Math.random() * (W - 60), y: -30, v: 60 + Math.random() * 80 + elapsed * 4, r: 22 });
       for (const it of g.items) it.y += it.v * dt;
       g.items = g.items.filter((it) => it.y < H + 30);
@@ -53,7 +55,7 @@ function BurgerTap() {
         ctx.fillStyle = "#F4B860"; ctx.beginPath(); ctx.roundRect(it.x - it.r, it.y + 6, it.r * 2, 10, 5); ctx.fill(); ctx.stroke();
       }
       if (remaining > 0) g.raf = requestAnimationFrame(draw);
-      else { setScore(g.score); setState("over"); setBest((b) => { const n = Math.max(b, g.score); try { localStorage.setItem(BEST, String(n)); } catch { /* ignore */ } return n; }); }
+      else { setScore(g.score); setState("over"); setBest((b) => Math.max(b, g.score)); try { const old = Number(localStorage.getItem(BEST) || 0); if (g.score > old) localStorage.setItem(BEST, String(g.score)); } catch { /* ignore */ } }
     };
     g.raf = requestAnimationFrame(draw);
     const tap = (e: PointerEvent) => {

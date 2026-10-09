@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
 import { KeyRound, LogOut, Moon, ScanFace, ShieldOff, Sun, Lamp } from "lucide-react";
 import { type Token, clientId, fillIdentity, setClientId, signIn, signOut } from "../lib/google";
-import { clearLock, enrolFace, faceAvailable, forgetFace, hasFace, hasPin, lockNow, setPin } from "../lib/lock";
+import { checkPin, clearLock, enrolFace, faceAvailable, forgetFace, hasFace, hasPin, lockNow, pinLength, setPin, waitSeconds } from "../lib/lock";
+import { type Theme, applyTheme, currentTheme } from "../lib/theme";
 import Koko from "../components/Koko";
 
-const THEMES = [{ id: "day", label: "Day", icon: Sun }, { id: "night", label: "Night", icon: Moon }, { id: "glow", label: "Night-light", icon: Lamp }];
+const THEMES: { id: Theme; label: string; icon: typeof Sun }[] = [{ id: "day", label: "Day", icon: Sun }, { id: "night", label: "Night", icon: Moon }, { id: "glow", label: "Night-light", icon: Lamp }];
 
 export default function SettingsPage({ token, setToken, onLock }: { token: Token | null; setToken: (t: Token | null) => void; onLock: () => void }) {
   const [gErr, setGErr] = useState("");
   const [id, setId] = useState(clientId());
-  const [theme, setTheme] = useState(() => document.documentElement.getAttribute("data-theme") || "day");
+  const [theme, setTheme] = useState<Theme>(() => currentTheme());
   const [saved, setSaved] = useState(false);
   const [pin1, setPin1] = useState(""); const [pin2, setPin2] = useState("");
   const [lockMsg, setLockMsg] = useState("");
@@ -17,11 +18,20 @@ export default function SettingsPage({ token, setToken, onLock }: { token: Token
   const [canFace, setCanFace] = useState(false);
   const [locked, setLocked] = useState(hasPin());
   useEffect(() => { faceAvailable().then(setCanFace); }, []);
-  const pick = (next: string) => { setTheme(next); document.documentElement.setAttribute("data-theme", next); try { localStorage.setItem("bernard.theme", next); } catch { /* ignore */ } };
+  const pick = (next: Theme) => { setTheme(next); applyTheme(next); };
+  const [cur, setCur] = useState("");     // the PIN in use now: changing or removing the lock must be asked for, or anyone holding the unlocked phone could lift it
   const savePin = async () => {
     setLockMsg("");
     if (pin1 !== pin2) { setLockMsg("The two PINs do not match."); return; }
-    try { await setPin(pin1); setLocked(true); setPin1(""); setPin2(""); setLockMsg("PIN set. The app asks for it when it opens."); } catch (e: any) { setLockMsg(e.message); }
+    if (locked && !(await proveCurrent())) return;
+    try { await setPin(pin1); setLocked(true); setPin1(""); setPin2(""); setCur(""); setLockMsg("PIN set. The app asks for it when it opens."); } catch (e: any) { setLockMsg(e.message); }
+  };
+  const proveCurrent = async () => {
+    const w = waitSeconds();
+    if (w > 0) { setLockMsg(`Too many wrong tries. Wait ${w}s.`); return false; }
+    if (await checkPin(cur)) return true;
+    setLockMsg(waitSeconds() > 0 ? `Wrong PIN. Wait ${waitSeconds()}s before trying again.` : "The current PIN is not right.");
+    return false;
   };
   return (
     <div className="space-y-4 pt-2">
@@ -36,6 +46,7 @@ export default function SettingsPage({ token, setToken, onLock }: { token: Token
       <section className="card p-5">
         <p className="font-display text-lg font-semibold">Lock</p>
         <p className="mt-1 text-sm text-muted">{locked ? "The app asks for your PIN when it opens, and again after 5 minutes in the background." : "No lock yet. Set a PIN so only you can open the app."}</p>
+        {locked && <input type="password" inputMode="numeric" pattern="\d*" maxLength={8} placeholder="Current PIN (needed to change or remove)" aria-label="Current PIN" className="field mt-3" value={cur} onChange={(e) => setCur(e.target.value.replace(/\D/g, ""))} />}
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
           <input type="password" inputMode="numeric" pattern="\d*" maxLength={8} placeholder={locked ? "New PIN" : "PIN (4–8 digits)"} className="field" value={pin1} onChange={(e) => setPin1(e.target.value.replace(/\D/g, ""))} />
           <input type="password" inputMode="numeric" pattern="\d*" maxLength={8} placeholder="Again" className="field" value={pin2} onChange={(e) => setPin2(e.target.value.replace(/\D/g, ""))} />
@@ -45,9 +56,9 @@ export default function SettingsPage({ token, setToken, onLock }: { token: Token
         {locked && (
           <div className="mt-3 flex flex-wrap gap-2">
             {canFace && !face && <button type="button" className="btn btn-plain text-sm" onClick={() => enrolFace().then(() => { setFace(true); setLockMsg("Face ID added. The lock opens with your face from now on."); }).catch((e) => setLockMsg(e.message))}><ScanFace size={16} /> Add Face ID / Touch ID</button>}
-            {face && <button type="button" className="btn btn-plain text-sm" onClick={() => { forgetFace(); setFace(false); }}><ScanFace size={16} /> Remove Face ID</button>}
+            {face && <button type="button" className="btn btn-plain text-sm" onClick={async () => { setLockMsg(""); if (!(await proveCurrent())) return; forgetFace(); setFace(false); setCur(""); }}><ScanFace size={16} /> Remove Face ID</button>}
             <button type="button" className="btn btn-plain text-sm" onClick={() => { lockNow(); onLock(); }}><KeyRound size={16} /> Lock now</button>
-            <button type="button" className="btn btn-plain text-sm" onClick={() => { clearLock(); setLocked(false); setFace(false); setLockMsg("Lock removed."); }}><ShieldOff size={16} /> Remove the lock</button>
+            <button type="button" className="btn btn-plain text-sm" onClick={async () => { setLockMsg(""); if (!(await proveCurrent())) return; clearLock(); setLocked(false); setFace(false); setCur(""); setLockMsg("Lock removed."); }}><ShieldOff size={16} /> Remove the lock</button>
           </div>
         )}
         {!canFace && <p className="mt-2 text-xs text-muted">Face ID / Touch ID appears here on a device that has it, once the app is opened over https.</p>}

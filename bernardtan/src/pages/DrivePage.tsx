@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ExternalLink, RefreshCw, Search } from "lucide-react";
 import { type DriveFile, type Token, listFiles } from "../lib/google";
 import Connect from "../components/Connect";
@@ -11,10 +11,12 @@ export default function DrivePage({ token, setToken }: { token: Token | null; se
   const [scope, setScope] = useState<"mine" | "shared">("mine");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const req = useRef(0);
   const load = async (query = q, sc = scope) => {
     if (!token) return;
+    const mine = ++req.current;                               // only the newest request may draw
     setBusy(true); setErr("");
-    try { setFiles(await listFiles(token, query, 40, sc)); } catch (e: any) { setErr(e.message || String(e)); } finally { setBusy(false); }
+    try { const f = await listFiles(token, query, 40, sc); if (mine === req.current) setFiles(f); } catch (e: any) { if (mine === req.current) setErr(e.message || String(e)); } finally { if (mine === req.current) setBusy(false); }
   };
   useEffect(() => { if (token) load(""); }, [token]);   // eslint-disable-line react-hooks/exhaustive-deps
   if (!token) return <div className="pt-6"><Connect setToken={setToken} what="Your Drive" /></div>;

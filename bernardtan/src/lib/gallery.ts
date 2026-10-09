@@ -8,7 +8,7 @@ export type Pic = { id: string; name: string; src: string; at?: string; from: "d
 export async function drivePictures(token: Token, n = 24): Promise<Pic[]> {
   const url = `https://www.googleapis.com/drive/v3/files?${new URLSearchParams({
     q: "mimeType contains 'image/' and trashed = false", pageSize: String(n), orderBy: "modifiedTime desc",
-    fields: "files(id,name,modifiedTime,webViewLink,thumbnailLink)" })}`;
+    fields: "files(id,name,modifiedTime,webViewLink,thumbnailLink,size)" })}`;
   const r = await fetch(url, { headers: { Authorization: `Bearer ${token.access_token}` } });
   if (r.status === 401) { forget(); throw new Error("Google signed you out (the hour is up). Press Connect again."); }
   if (!r.ok) throw new Error(`Drive said ${r.status}`);
@@ -22,8 +22,9 @@ export async function drivePictures(token: Token, n = 24): Promise<Pic[]> {
 }
 
 async function thumb(token: Token, f: any): Promise<string | null> {
+  // the original is only a fallback for a small file: a 12 MB photo is not worth downloading to draw a card
   const tries = [f.thumbnailLink ? String(f.thumbnailLink).replace(/=s\d+$/, "=s800") : "",
-    `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`];
+    Number(f.size) > 0 && Number(f.size) <= 4_000_000 ? `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media` : ""];
   for (const u of tries) {
     if (!u) continue;
     try {
@@ -44,17 +45,17 @@ function open(): Promise<IDBDatabase> {
   });
 }
 export async function addPhonePictures(files: FileList | File[]): Promise<number> {
+  // Shrink first, store after: an IndexedDB transaction closes itself while we wait for a canvas, so a put after
+  // `await shrink()` inside it throws and the picture is never kept.
+  const ready: { name: string; blob: Blob }[] = [];
+  for (const f of Array.from(files)) { if (f.type.startsWith("image/")) ready.push({ name: f.name, blob: await shrink(f) }); }
+  if (!ready.length) return 0;
   const db = await open();
   const tx = db.transaction(STORE, "readwrite");
-  let n = 0;
-  for (const f of Array.from(files)) {
-    if (!f.type.startsWith("image/")) continue;
-    const blob = await shrink(f);
-    tx.objectStore(STORE).put({ id: `p_${Date.now().toString(36)}_${n}`, name: f.name, blob, at: new Date().toISOString() });
-    n++;
-  }
-  await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
-  return n;
+  const stamp = Date.now().toString(36), rnd = Math.random().toString(36).slice(2, 6);
+  ready.forEach((r, i) => tx.objectStore(STORE).put({ id: `p_${stamp}${rnd}_${i}`, name: r.name, blob: r.blob, at: new Date().toISOString() }));
+  await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error); });
+  return ready.length;
 }
 export async function phonePictures(): Promise<Pic[]> {
   try {
@@ -79,3 +80,6 @@ async function shrink(f: File): Promise<Blob> {
     return await new Promise((res) => c.toBlob((b) => res(b || f), "image/jpeg", 0.85));
   } catch { return f; }
 }
+
+/** Give back the memory behind the picture addresses made for a list (call it when the list is replaced or the page closes). */
+export function revokePics(pics: Pic[]) { for (const p of pics) { try { if (p.src.startsWith("blob:")) URL.revokeObjectURL(p.src); } catch { /* ignore */ } } }

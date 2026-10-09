@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Bell, Download, FolderOpen, Gamepad2, Images, Table2 } from "lucide-react";
 import { type Token } from "../lib/google";
-import { type Pic, drivePictures, phonePictures } from "../lib/gallery";
+import { type Pic, drivePictures, phonePictures, revokePics } from "../lib/gallery";
 import { loadReminders, upcoming, when } from "../lib/reminders.js";
 import Connect from "../components/Connect";
 import Koko from "../components/Koko";
@@ -23,12 +23,13 @@ export default function HomePage({ token, setToken, go, installEvt, onInstalled 
   const next = upcoming(loadReminders())[0];
   useEffect(() => {
     let alive = true;
+    const made: Pic[] = [];                                    // every address made here is given back when the page goes
     (async () => {
-      const phone = await phonePictures();
-      if (alive) setPics(phone.slice(0, 8));
-      if (token) { try { const d = await drivePictures(token, 8); if (alive) setPics((p) => [...p, ...d].slice(0, 12)); } catch { /* the strip just stays shorter */ } }
+      const phone = (await phonePictures()).slice(0, 8); made.push(...phone);
+      if (alive) setPics(phone);
+      if (token) { try { const d = await drivePictures(token, 8); made.push(...d); if (alive) setPics((p) => [...p, ...d].slice(0, 12)); } catch { /* the strip just stays shorter */ } }
     })();
-    return () => { alive = false; };
+    return () => { alive = false; setTimeout(() => revokePics(made), 0); };
   }, [token]);
   return (
     <div className="space-y-6 pt-2">
