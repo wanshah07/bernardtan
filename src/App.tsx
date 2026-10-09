@@ -40,8 +40,19 @@ export default function App() {
       else if (hiddenAt && Date.now() - hiddenAt > AUTO_LOCK_MS) { lockNow(); setLocked(isLocked()); }
     };
     document.addEventListener("visibilitychange", onVis);
-    return () => { window.removeEventListener("hashchange", onHash); window.removeEventListener("beforeinstallprompt", onInstall); document.removeEventListener("visibilitychange", onVis); };
+    // a key Google refused (401) is forgotten in lib/google; the pages must stop showing "connected" too
+    const onOut = () => setToken(null);
+    window.addEventListener("bernard:signedout", onOut);
+    return () => { window.removeEventListener("hashchange", onHash); window.removeEventListener("beforeinstallprompt", onInstall); document.removeEventListener("visibilitychange", onVis); window.removeEventListener("bernard:signedout", onOut); };
   }, []);
+  // the one-hour key runs out: say "not connected" at that moment instead of failing on the next tap
+  useEffect(() => {
+    if (!token) return;
+    const ms = token.expires_at - Date.now() - 30_000;
+    if (ms <= 0) { setToken(null); return; }
+    const id = setTimeout(() => setToken(null), Math.min(ms, 2 ** 31 - 1));
+    return () => clearTimeout(id);
+  }, [token]);
   const go = (id: TabId) => { setTab(id); location.hash = id === "home" ? "" : id; };
   const open = useCallback(() => setLocked(false), []);
   if (locked) return <Lock onOpen={open} />;

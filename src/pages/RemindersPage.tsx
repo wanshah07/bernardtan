@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bell, BellRing, CalendarPlus, Check, Download, Trash2 } from "lucide-react";
-import { REPEATS, buildIcs, buildIcsAll, dueNow, fromLocalInput, loadReminders, newReminder, saveReminders, toLocalInput, upcoming, when } from "../lib/reminders.js";
+import { REPEATS, buildIcs, buildIcsAll, dueNow, fromLocalInput, loadReminders, newReminder, occurrenceKey, saveReminders, toLocalInput, upcoming, when } from "../lib/reminders.js";
 import Koko from "../components/Koko";
 
 /* Reminders. No server, so the iPhone route is Apple's own: "Add to iPhone" hands Safari a calendar event with an alert,
@@ -17,35 +17,41 @@ export default function RemindersPage() {
   const [lead, setLead] = useState(0);
   const [note, setNote] = useState("");
   const [perm, setPerm] = useState<string>(() => (typeof Notification !== "undefined" ? Notification.permission : "unsupported"));
-  const [ring, setRing] = useState<R[]>([]);
+  const [ring, setRing] = useState<{ r: R; at: Date }[]>([]);
+  const alerted = useRef(new Set<string>()), dismissed = useRef(new Set<string>());     // per occurrence, for this visit
   const persist = (next: R[]) => { setList(next); saveReminders(next); };
   const add = (e: React.FormEvent) => {
     e.preventDefault();
     const d = fromLocalInput(at);
     if (!title.trim() || !d) return;
     persist([...list, newReminder({ title, at: d.toISOString(), repeat, lead, note })]);
-    setTitle(""); setNote("");
+    setTitle(""); setNote(""); setAt(toLocalInput(new Date(Date.now() + 3600_000)));      // the next one starts an hour from now, not at the old time
   };
   useEffect(() => {
     const tick = () => {
-      const due = dueNow(list, new Date());
-      if (!due.length) return;
+      const due = dueNow(list, new Date()).filter((x: { r: R; at: Date }) => !dismissed.current.has(occurrenceKey(x)));
       setRing(due);
-      if (typeof Notification !== "undefined" && Notification.permission === "granted") due.forEach((r: R) => { try { new Notification(r.title, { body: r.note || "Reminder", tag: r.id }); } catch { /* ignore */ } });
+      // a notification and a buzz once per occurrence, not every 20 seconds while an overdue one waits
+      const fresh = due.filter((x: { r: R; at: Date }) => !alerted.current.has(occurrenceKey(x)));
+      if (!fresh.length) return;
+      fresh.forEach((x: { r: R; at: Date }) => alerted.current.add(occurrenceKey(x)));
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") fresh.forEach(({ r }: { r: R }) => { try { new Notification(r.title, { body: r.note || "Reminder", tag: r.id }); } catch { /* ignore */ } });
       if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
     };
     tick(); const i = setInterval(tick, 20_000); return () => clearInterval(i);
   }, [list]);
-  const ics = (r: R) => {
-    const blob = new Blob([buildIcs(r)], { type: "text/calendar;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `${r.title.replace(/[^\w]+/g, "-").slice(0, 40) || "reminder"}.ics`; a.click();
+  // On an iPhone the share sheet is the route that offers "Add to Calendar" for a calendar file; elsewhere it downloads.
+  const deliver = async (text: string, name: string) => {
+    const file = new File([text], name, { type: "text/calendar" });
+    try {
+      if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: name }); return; }
+    } catch (e: any) { if (e?.name === "AbortError") return; /* refused: fall back to a download */ }
+    const url = URL.createObjectURL(file); const a = document.createElement("a"); a.href = url; a.download = name; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   };
+  const ics = (r: R) => deliver(buildIcs(r), `${r.title.replace(/[^\w]+/g, "-").slice(0, 40) || "reminder"}.ics`);
   const icsAll = () => {
-    const blob = new Blob([buildIcsAll(list.filter((r) => !r.done))], { type: "text/calendar;charset=utf-8" });
-    const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = "bernard-reminders.ics"; a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    void deliver(buildIcsAll(list.filter((r) => !r.done)), "bernard-reminders.ics");
   };
   const up = upcoming(list);
   const done = list.filter((r) => r.done);
@@ -55,8 +61,11 @@ export default function RemindersPage() {
       {ring.length > 0 && (
         <div className="card flex items-center gap-3 border-glow p-4">
           <BellRing size={22} className="shrink-0 text-glow" />
-          <div className="flex-1 text-sm">{ring.map((r) => <p key={r.id}><b>{r.title}</b>{r.note ? ` · ${r.note}` : ""}</p>)}</div>
-          <button type="button" className="btn btn-glow px-3 py-1 text-xs" onClick={() => { persist(list.map((r) => (ring.some((x) => x.id === r.id) && r.repeat === "none" ? { ...r, done: true } : r))); setRing([]); }}>Got it</button>
+          <div className="flex-1 text-sm">{ring.map((x) => <p key={occurrenceKey(x)}><b>{x.r.title}</b>{x.r.note ? ` · ${x.r.note}` : ""}</p>)}</div>
+          <button type="button" className="btn btn-glow px-3 py-1 text-xs" onClick={() => {
+            ring.forEach((x) => dismissed.current.add(occurrenceKey(x)));                    // this occurrence only: tomorrow's still rings
+            persist(list.map((r) => (ring.some((x) => x.r.id === r.id) && r.repeat === "none" ? { ...r, done: true } : r))); setRing([]);
+          }}>Got it</button>
         </div>
       )}
       <form onSubmit={add} className="card space-y-3 p-5">

@@ -1,10 +1,10 @@
-/* The app lock. Bernard's phone is already his, so this is a lock on the APP, not a server login: a 6-digit PIN kept as a
+/* The app lock. Bernard's phone is already his, so this is a lock on the APP, not a server login: a 4 to 8 digit PIN kept as a
    salted SHA-256 hash in this browser, and Face ID / Touch ID through WebAuthn's platform authenticator when the device
    has one (the credential is created and later asked for locally; the OS does the face check and the app only learns
    that it passed). Google sign-in is separate and stays as it was. Honest limits: clearing site data clears the lock; a
-   PIN is a six-digit PIN. */
+   PIN is 4 to 8 digits. */
 
-const KEY_PIN = "bernard.lock.pin";          // {salt, hash}
+const KEY_PIN = "bernard.lock.pin";          // {salt, hash, len}
 const KEY_FACE = "bernard.lock.face";        // the credential id, base64url
 const KEY_TRIES = "bernard.lock.tries";      // {n, until}
 const SESSION = "bernard.lock.open";         // "1" while unlocked in this tab
@@ -17,6 +17,8 @@ const get = (k: string) => { try { return localStorage.getItem(k); } catch { ret
 const set = (k: string, v: string | null) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch { /* ignore */ } };
 
 export function hasPin() { return !!get(KEY_PIN); }
+/** How many digits the PIN has (4 to 8); 0 when unknown (a PIN saved before this was recorded). */
+export function pinLength(): number { try { const n = Number(JSON.parse(get(KEY_PIN) || "{}").len); return n >= 4 && n <= 8 ? n : 0; } catch { return 0; } }
 export function hasFace() { return !!get(KEY_FACE); }
 export function isLocked() { return hasPin() && sessionStorage.getItem(SESSION) !== "1"; }
 export function markOpen() { try { sessionStorage.setItem(SESSION, "1"); } catch { /* ignore */ } }
@@ -29,7 +31,7 @@ async function hash(salt: string, pin: string) {
 export async function setPin(pin: string) {
   if (!/^\d{4,8}$/.test(pin)) throw new Error("A PIN is 4 to 8 digits.");
   const salt = b64(crypto.getRandomValues(new Uint8Array(16)).buffer);
-  set(KEY_PIN, JSON.stringify({ salt, hash: await hash(salt, pin) }));
+  set(KEY_PIN, JSON.stringify({ salt, hash: await hash(salt, pin), len: pin.length }));
   set(KEY_TRIES, null);
   markOpen();
 }

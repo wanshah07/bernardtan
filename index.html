@@ -18,7 +18,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
     <script>
       // the saved theme before first paint, so there is no flash
-      try { var t = localStorage.getItem("bernard.theme"); if (t) document.documentElement.setAttribute("data-theme", t); } catch (e) {}
+      try {
+        var t = localStorage.getItem("bernard.theme"), bar = { day: "#E8452C", night: "#201816", glow: "#0E1626" };
+        if (bar[t]) { document.documentElement.setAttribute("data-theme", t); document.querySelector('meta[name="theme-color"]').setAttribute("content", bar[t]); }
+      } catch (e) {}
     </script>
   </head>
   <body class="bg-bg text-ink font-body antialiased">

@@ -20,12 +20,12 @@ export const ownedQ = (kindQ = "") => ["trashed = false", "'me' in owners", kind
 export const SHARED_Q = "trashed = false and sharedWithMe = true";
 
 /** A readable reason for a Google API failure, with the one fix that matters most. */
-export function explain(status, body) {
+export function explain(status, body, apiName = "Google Drive API") {
   let msg = "";
   try { const j = typeof body === "string" ? JSON.parse(body) : body; msg = j?.error?.message || ""; } catch { msg = String(body || ""); }
   if (status === 401) return "Google signed you out (the hour is up). Press Find my Google again.";
   if (status === 403 && /has not been used|is disabled|accessNotConfigured|not enabled/i.test(`${msg} ${JSON.stringify(body)}`)) {
-    return "The Google Drive API is not switched on in the Google Cloud project yet: open APIs & Services, Library, Google Drive API, Enable (README step 4).";
+    return `The ${apiName} is not switched on in the Google Cloud project yet: open APIs & Services, Library, ${apiName}, Enable (README step 4).`;
   }
   if (status === 403) return `Google would not let this account do that${msg ? `: ${msg}` : "."}`;
   if (status === 429) return "Google says slow down; wait a minute and try again.";
