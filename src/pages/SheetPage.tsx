@@ -18,6 +18,11 @@ const store = {
   get: (k: string) => { try { return localStorage.getItem(k) || ""; } catch { return ""; } },
   set: (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* private window */ } },
 };
+/** Only ever render a cell's hyperlink as a real <a href> when it is an actual http(s) URL: a sheet cell can hold
+    anything (`javascript:`, `data:`, ...) and React does not block those schemes on its own. */
+function isSafeHref(href: string): boolean {
+  try { return ["http:", "https:"].includes(new URL(href, window.location.href).protocol); } catch { return false; }
+}
 
 export default function SheetPage({ token, setToken }: { token: Token | null; setToken: (t: Token) => void }) {
   const [sheets, setSheets] = useState<DriveFile[]>([]);
@@ -118,7 +123,7 @@ export default function SheetPage({ token, setToken }: { token: Token | null; se
             <div className="gs-fbar" aria-live="polite">
               <span className="gs-addr">{sel ? addressOf(sel.r, sel.c) : "—"}</span><span className="gs-fx">fx</span>
               <span className="gs-val">{picked ? picked.v : sel ? "" : "Tap a cell to read it here"}</span>
-              {picked?.link && <a href={picked.link} target="_blank" rel="noreferrer" className="shrink-0 underline">link</a>}
+              {picked?.link && isSafeHref(picked.link) && <a href={picked.link} target="_blank" rel="noreferrer" className="shrink-0 underline">link</a>}
             </div>
             {picked?.note && <p className="px-3 py-1 text-xs" style={{ background: "var(--gs-bar)", color: "var(--gs-barfg)" }}>Note: {picked.note}</p>}
 

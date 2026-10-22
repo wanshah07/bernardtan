@@ -29,8 +29,8 @@ export function nextAt(r, now = new Date()) {
   const base = d;
   let k = 0;
   while (d < now && k++ < 10000) {
-    if (r.repeat === "daily") d = new Date(d.getTime() + 86_400_000);
-    else if (r.repeat === "weekly") d = new Date(d.getTime() + 7 * 86_400_000);
+    if (r.repeat === "daily") d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, d.getHours(), d.getMinutes(), d.getSeconds());
+    else if (r.repeat === "weekly") d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7, d.getHours(), d.getMinutes(), d.getSeconds());
     else d = addMonths(base, k);
   }
   return d;
@@ -78,7 +78,7 @@ export function fold(line) {
   parts.push(cur);
   return parts.join("\r\n ");
 }
-const esc = (s) => String(s || "").replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/[,;]/g, (m) => `\\${m}`);
+const esc = (s) => String(s || "").replace(/\\/g, "\\\\").replace(/\r\n/g, "\\n").replace(/[\r\n]/g, "\\n").replace(/[,;]/g, (m) => `\\${m}`);
 const RRULE = { daily: "FREQ=DAILY", weekly: "FREQ=WEEKLY", monthly: "FREQ=MONTHLY" };
 
 /** One VEVENT with an alert at the time (and one `lead` minutes before, when set). Opened on an iPhone it offers "Add to Calendar". */

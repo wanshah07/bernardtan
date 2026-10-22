@@ -67,7 +67,7 @@ export async function phonePictures(): Promise<Pic[]> {
 export async function removePhonePicture(id: string) {
   const db = await open();
   const tx = db.transaction(STORE, "readwrite"); tx.objectStore(STORE).delete(id);
-  await new Promise((res) => { tx.oncomplete = res; });
+  await new Promise<void>((res, rej) => { tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error); });
 }
 /** A phone photo is 3–8 MB; the carousel needs 1200px. Resize on a canvas so the database stays small. */
 async function shrink(f: File): Promise<Blob> {
