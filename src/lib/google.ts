@@ -99,7 +99,7 @@ async function api<T>(token: Token, url: string, init?: RequestInit): Promise<T>
 
 /** Recent files, or a name search, in Bernard's Drive (read only). `mine` is what his account owns; `shared` is what other people shared with him. */
 export async function listFiles(token: Token, q = "", pageSize = 40, scope: "mine" | "shared" = "mine"): Promise<DriveFile[]> {
-  const query = [`trashed = false`, scope === "mine" ? `'me' in owners` : `sharedWithMe = true`, q ? `name contains '${q.replace(/'/g, "\\'")}'` : ""].filter(Boolean).join(" and ");
+  const query = [`trashed = false`, scope === "mine" ? `'me' in owners` : `sharedWithMe = true`, q ? `name contains '${q.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'` : ""].filter(Boolean).join(" and ");
   const url = `https://www.googleapis.com/drive/v3/files?${new URLSearchParams({ q: query, pageSize: String(pageSize), orderBy: "modifiedTime desc",
     fields: "files(id,name,mimeType,modifiedTime,webViewLink,iconLink,size)" })}`;
   const j = await api<{ files: DriveFile[] }>(token, url);
