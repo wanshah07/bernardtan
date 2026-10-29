@@ -15,7 +15,13 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <!-- The Google Fonts stylesheet is fetched off the critical path: preload it, apply it only once it
+         has arrived (media="print" until onload flips it to "all"), and fall back to a plain blocking
+         link when scripts are off. First paint no longer waits on fonts.googleapis.com; display=swap
+         shows the system fallback until Fredoka and Nunito land. -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" /></noscript>
     <script>
       // the saved theme before first paint, so there is no flash
       try {
