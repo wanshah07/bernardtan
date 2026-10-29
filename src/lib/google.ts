@@ -62,11 +62,9 @@ export async function signIn(opts: { pick?: boolean } = {}): Promise<Token> {
     // pick: always show Google's own account chooser, so the person chooses which of their accounts to use
     client.requestAccessToken({ prompt: opts.pick || !savedToken() ? "select_account" : "" });
   });
-  try {
-    const me = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", { headers: { Authorization: `Bearer ${token.access_token}` } }).then((r) => r.json());
-    token.email = me.email; token.name = me.name; token.picture = me.picture;
-  } catch { /* the token still works without the name */ }
-  if (!token.email) await fillIdentity(token);
+  // Who the account is comes from Drive (`about.get`): the userinfo endpoint needs the email/profile scopes this app
+  // never asks for, so asking it was one guaranteed 401 in the console on every sign-in before the real lookup ran.
+  await fillIdentity(token);
   saveToken(token);
   return token;
 }
