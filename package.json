@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "node sheet.test.mjs && node grid.test.mjs && node reminders.test.mjs && node mygoogle.test.mjs"
+    "test": "node sheet.test.mjs && node grid.test.mjs && node reminders.test.mjs && node mygoogle.test.mjs && node --experimental-strip-types google-signin.test.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.47.0",
