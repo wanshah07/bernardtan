@@ -70,6 +70,8 @@ npm run build      # type-check + production build into dist/
 node icons.mjs     # regenerates the PNG icons from public/koko.svg (needs Playwright's Chromium)
 ```
 
+The Google sign-in regression test uses mocked Google Identity Services and Drive responses; it proves that no OAuth userinfo request is made and that `about.get` supplies the identity. It does not replace a manual browser smoke test: after deployment, choose a real Google account, confirm its name/e-mail appear, and check that the browser console has no userinfo error. That real-account check is not covered by `npm test`.
+
 ## Where things are
 ```
 index.html                      the shell: fonts, manifest, theme before first paint
