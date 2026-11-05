@@ -87,8 +87,8 @@ body { min-height: 100dvh; padding-bottom: env(safe-area-inset-bottom); }
 .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 0 rgb(var(--c-line)); }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 .btn-ketchup { background: rgb(var(--c-ketchup)); color: #fff; }
-/* at night the red is lighter, so white on it fell to 2.9:1; the ink reads at 6:1 and still looks like the same button */
-:root[data-theme="night"] .btn-ketchup, :root[data-theme="glow"] .btn-ketchup { color: rgb(var(--c-ink)); }
+/* at night the red is lighter, so white on it fell to 2.9:1; the page background colour (the dark one) reads at 6:1 and still looks like the same button */
+:root[data-theme="night"] .btn-ketchup, :root[data-theme="glow"] .btn-ketchup { color: rgb(var(--c-bg)); }
 .btn-mustard { background: rgb(var(--c-mustard)); color: rgb(43 31 26); }
 .btn-plain { background: rgb(var(--c-surface)); color: rgb(var(--c-ink)); }
 .btn-glow { background: rgb(var(--c-glow)); color: rgb(14 22 38); box-shadow: 0 4px 0 0 rgb(var(--c-line)), 0 0 18px rgb(var(--c-glow) / .6); }
