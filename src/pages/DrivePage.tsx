@@ -28,7 +28,7 @@ export default function DrivePage({ token, setToken }: { token: Token | null; se
             {([["mine", "Mine"], ["shared", "Shared with me"]] as const).map(([id, label]) => <button key={id} type="button" aria-pressed={scope === id} onClick={() => { setScope(id); load(q, id); }} className={`rounded-pill border-[3px] border-line px-3 py-1 text-xs font-semibold ${scope === id ? "bg-glow text-ink" : "bg-surface"}`}>{label}</button>)}
           </div></div>
         <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); load(); }}>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name…" className="rounded-pill border-[3px] border-line bg-surface px-4 py-2 text-sm outline-none" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name…" aria-label="Search Drive by name" className="field !rounded-pill !py-2 text-sm" />
           <button type="submit" className="btn btn-mustard px-3" aria-label="Search"><Search size={16} /></button>
           <button type="button" className="btn btn-plain px-3" aria-label="Refresh" onClick={() => { setQ(""); load(""); }}><RefreshCw size={16} className={busy ? "animate-spin" : ""} /></button>
         </form>
