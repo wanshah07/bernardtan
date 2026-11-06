@@ -46,7 +46,7 @@ export default function GalleryPage({ token, setToken }: { token: Token | null; 
       <section>
         <div className="mb-2 flex items-center justify-between"><h2 className="font-display text-xl font-semibold">From your Drive</h2>
           {token && <button type="button" className="btn btn-plain px-3 py-1 text-xs" onClick={loadDrive}><RefreshCw size={14} className={busy ? "animate-spin" : ""} /> Refresh</button>}</div>
-        {!token ? <Connect setToken={setToken} what="Your Drive pictures" />
+        {!token ? <Connect setToken={setToken} what="Your Drive picture collection" />
           : err ? <p className="rounded-tile border-[3px] border-danger bg-surface p-3 text-sm text-danger">{err}</p>
           : drive.length ? <Carousel pics={drive} />
           : <div className="card flex items-center gap-4 p-5"><Koko size={72} mood={busy ? "happy" : "sleepy"} className="shrink-0" /><p className="text-sm text-muted">{busy ? "Looking in your Drive…" : "No pictures in your Drive yet."}</p></div>}

@@ -48,8 +48,8 @@ export default function SettingsPage({ token, setToken, onLock }: { token: Token
         <p className="mt-1 text-sm text-muted">{locked ? "The app asks for your PIN when it opens, and again after 5 minutes in the background." : "No lock yet. Set a PIN so only you can open the app."}</p>
         {locked && <input type="password" inputMode="numeric" pattern="\d*" maxLength={8} placeholder="Current PIN (needed to change or remove)" aria-label="Current PIN" className="field mt-3" value={cur} onChange={(e) => setCur(e.target.value.replace(/\D/g, ""))} />}
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
-          <input type="password" inputMode="numeric" pattern="\d*" maxLength={8} placeholder={locked ? "New PIN" : "PIN (4–8 digits)"} className="field" value={pin1} onChange={(e) => setPin1(e.target.value.replace(/\D/g, ""))} />
-          <input type="password" inputMode="numeric" pattern="\d*" maxLength={8} placeholder="Again" className="field" value={pin2} onChange={(e) => setPin2(e.target.value.replace(/\D/g, ""))} />
+          <input type="password" inputMode="numeric" pattern="\d*" maxLength={8} placeholder={locked ? "New PIN" : "PIN (4–8 digits)"} aria-label={locked ? "New PIN" : "PIN, 4 to 8 digits"} className="field" value={pin1} onChange={(e) => setPin1(e.target.value.replace(/\D/g, ""))} />
+          <input type="password" inputMode="numeric" pattern="\d*" maxLength={8} placeholder="Again" aria-label="The PIN again" className="field" value={pin2} onChange={(e) => setPin2(e.target.value.replace(/\D/g, ""))} />
           <button type="button" className="btn btn-glow" onClick={savePin} disabled={pin1.length < 4}><KeyRound size={16} /> {locked ? "Change PIN" : "Set PIN"}</button>
         </div>
         {lockMsg && <p className="mt-2 text-sm">{lockMsg}</p>}

@@ -70,13 +70,13 @@ export default function RemindersPage() {
       )}
       <form onSubmit={add} className="card space-y-3 p-5">
         <p className="font-display text-lg font-semibold">New reminder</p>
-        <input className="field" placeholder="What? (e.g. Take the pills)" value={title} onChange={(e) => setTitle(e.target.value)} required />
+        <input className="field" aria-label="What to remember" placeholder="What? (e.g. Take the pills)" value={title} onChange={(e) => setTitle(e.target.value)} required />
         <div className="grid gap-3 sm:grid-cols-3">
           <label className="text-xs font-semibold text-muted">When<input type="datetime-local" className="field mt-1" value={at} onChange={(e) => setAt(e.target.value)} required /></label>
           <label className="text-xs font-semibold text-muted">Repeat<select className="field mt-1" value={repeat} onChange={(e) => setRepeat(e.target.value)}>{REPEATS.map((r: string) => <option key={r} value={r}>{REPEAT_WORDS[r]}</option>)}</select></label>
           <label className="text-xs font-semibold text-muted">Heads-up before<select className="field mt-1" value={lead} onChange={(e) => setLead(Number(e.target.value))}>{[0, 10, 30, 60].map((m) => <option key={m} value={m}>{m ? `${m} min before` : "At the time only"}</option>)}</select></label>
         </div>
-        <input className="field" placeholder="A note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
+        <input className="field" aria-label="Note" placeholder="A note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
         <button type="submit" className="btn btn-glow"><Bell size={16} /> Save reminder</button>
       </form>
       {perm === "default" && <button type="button" className="btn btn-plain text-sm" onClick={() => Notification.requestPermission().then(setPerm)}><Bell size={16} /> Also allow notifications while the app is open</button>}

@@ -14,14 +14,14 @@
   --c-line:       43  31  26;   /* #2B1F1A chocolate ink, also the outlines */
   --c-ink:        43  31  26;
   --c-muted:     122  96  82;
-  --c-ketchup:   232  69  44;   /* #E8452C */
+  --c-ketchup:   207  56  30;   /* #CF381E: a touch deeper than the #E8452C it began as, so white on it reads at AA (4.96:1) and it reads on the cream at 4.6:1 */
   --c-mustard:   249 199  73;   /* #F9C749 */
   --c-lettuce:   124 179  66;   /* #7CB342 */
   --c-bun:       244 184  96;   /* #F4B860 */
   --c-sky:        91 192 222;   /* #5BC0DE */
   --c-glow:      158 232  96;   /* #9EE860 the night-light green */
   --c-ok:         46 140  60;
-  --c-warn:      214 122   0;
+  --c-warn:      166  92   0;   /* #A65C00: the old #D67A00 was 2.95:1 on the cream, under AA for the small notes that use it */
   --c-danger:    198  40  40;
   --glow-alpha: 0;
 }
@@ -87,6 +87,8 @@ body { min-height: 100dvh; padding-bottom: env(safe-area-inset-bottom); }
 .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 0 rgb(var(--c-line)); }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 .btn-ketchup { background: rgb(var(--c-ketchup)); color: #fff; }
+/* at night the red is lighter, so white on it fell to 2.9:1; the page background colour (the dark one) reads at 6:1 and still looks like the same button */
+:root[data-theme="night"] .btn-ketchup, :root[data-theme="glow"] .btn-ketchup { color: rgb(var(--c-bg)); }
 .btn-mustard { background: rgb(var(--c-mustard)); color: rgb(43 31 26); }
 .btn-plain { background: rgb(var(--c-surface)); color: rgb(var(--c-ink)); }
 .btn-glow { background: rgb(var(--c-glow)); color: rgb(14 22 38); box-shadow: 0 4px 0 0 rgb(var(--c-line)), 0 0 18px rgb(var(--c-glow) / .6); }

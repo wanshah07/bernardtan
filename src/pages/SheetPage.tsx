@@ -87,7 +87,7 @@ export default function SheetPage({ token, setToken }: { token: Token | null; se
   const picked = sel && model ? model.cell(sel.r, sel.c) : null;
   const visibleTabs = meta?.tabs.filter((t) => !t.hidden) || [];
 
-  if (!token) return <div className="pt-6"><Connect setToken={setToken} what="Your own Sheets" label="Find my Google" pick /></div>;
+  if (!token) return <div className="pt-6"><Connect setToken={setToken} what="Your own spreadsheet data" label="Find my Google" pick /></div>;
   return (
     <div className="space-y-4 pt-2">
       <div><h1 className="font-display text-3xl font-bold">Sheet</h1><p className="text-sm text-muted">One of your own spreadsheets, drawn like the Google Sheets app. Or paste a link to any sheet your account can open.</p></div>
